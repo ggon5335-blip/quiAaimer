@@ -1,5 +1,7 @@
 const express=require('express'),http=require('http'),{Server}=require('socket.io'),path=require('path');
-const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:'*'}});
+const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:'*'},pingTimeout:60000,pingInterval:25000});
+app.use((req,res,next)=>{res.set({'Cache-Control':'no-store,no-cache,must-revalidate','Pragma':'no-cache','Expires':'0'});next()});
+app.get('/health',(req,res)=>res.json({status:'ok',rooms:rooms?.size||0}));
 app.use(express.static(path.join(__dirname,'public')));
 
 const CONTENT=[
