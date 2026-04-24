@@ -1,10 +1,47 @@
 const express=require('express'),http=require('http'),{Server}=require('socket.io'),path=require('path');
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:'*'},pingTimeout:60000,pingInterval:25000});
 app.use((req,res,next)=>{res.set({'Cache-Control':'no-store,no-cache,must-revalidate','Pragma':'no-cache','Expires':'0'});next()});
-// VISITOR TRACKING
-const stats={uniqueIPs:new Set(),totalViews:0,startedAt:new Date().toISOString()};
-app.get('/api/visit',(req,res)=>{const ip=req.headers['x-forwarded-for']||req.connection.remoteAddress||'unknown';stats.totalViews++;stats.uniqueIPs.add(ip);res.json({unique:stats.uniqueIPs.size,views:stats.totalViews})});
-app.get('/api/stats',(req,res)=>res.json({unique:stats.uniqueIPs.size,views:stats.totalViews,since:stats.startedAt}));
+
+// ========== ADMIN SYSTEM ==========
+const ADMIN_KEY='bendo2026x';
+const visitors=[];
+const onlineUsers=new Map();
+
+function getDevice(ua){
+  if(!ua)return{type:'Inconnu',os:'?',browser:'?'};
+  const mobile=/Mobile|Android|iPhone|iPad/i.test(ua);
+  let os='Autre';
+  if(/Windows/i.test(ua))os='Windows';else if(/Mac/i.test(ua))os='MacOS';else if(/iPhone|iPad/i.test(ua))os='iOS';else if(/Android/i.test(ua))os='Android';else if(/Linux/i.test(ua))os='Linux';
+  let browser='Autre';
+  if(/Chrome/i.test(ua)&&!/Edg/i.test(ua))browser='Chrome';else if(/Safari/i.test(ua)&&!/Chrome/i.test(ua))browser='Safari';else if(/Firefox/i.test(ua))browser='Firefox';else if(/Edg/i.test(ua))browser='Edge';
+  return{type:mobile?'📱 Mobile':'💻 PC',os,browser};
+}
+
+app.get('/api/visit',(req,res)=>{
+  const ip=(req.headers['x-forwarded-for']||req.connection.remoteAddress||'unknown').split(',')[0].trim();
+  const ua=req.headers['user-agent']||'';
+  const dev=getDevice(ua);
+  const existing=visitors.find(v=>v.ip===ip);
+  if(existing){
+    const diff=Date.now()-new Date(existing.lastSeen).getTime();
+    if(diff>30*60*1000){existing.visits++;existing.lastSeen=new Date().toISOString()}
+    existing.ua=ua;existing.device=dev;
+  }else{visitors.push({ip,ua,device:dev,visits:1,firstSeen:new Date().toISOString(),lastSeen:new Date().toISOString()})}
+  res.json({unique:visitors.length,views:visitors.reduce((a,v)=>a+v.visits,0)});
+});
+app.get('/api/stats',(req,res)=>res.json({unique:visitors.length,views:visitors.reduce((a,v)=>a+v.visits,0),since:visitors[0]?.firstSeen||new Date().toISOString()}));
+
+// ADMIN ROUTES (protected)
+app.get('/admin',(req,res)=>{if(req.query.key!==ADMIN_KEY)return res.status(403).send('🚫');res.sendFile(path.join(__dirname,'admin.html'))});
+app.get('/api/admin/data',(req,res)=>{
+  if(req.query.key!==ADMIN_KEY)return res.status(403).json({error:'nope'});
+  const totalViews=visitors.reduce((a,v)=>a+v.visits,0);
+  const mobileCount=visitors.filter(v=>v.device.type.includes('Mobile')).length;
+  const pcCount=visitors.filter(v=>v.device.type.includes('PC')).length;
+  const online=Array.from(onlineUsers.values());
+  res.json({visitors,online,totalViews,uniqueCount:visitors.length,mobileCount,pcCount,rooms:rooms?.size||0});
+});
+
 app.get('/health',(req,res)=>res.json({status:'ok',rooms:rooms?.size||0}));
 app.use(express.static(path.join(__dirname,'public')));
 
@@ -163,6 +200,12 @@ function endGame(room){
 }
 
 io.on('connection',socket=>{
+  // TRACK ONLINE
+  const ua=socket.handshake.headers['user-agent']||'';
+  const ip=(socket.handshake.headers['x-forwarded-for']||socket.handshake.address||'?').split(',')[0].trim();
+  const dev=getDevice(ua);
+  onlineUsers.set(socket.id,{id:socket.id,ip,device:dev,connectedAt:new Date().toISOString()});
+
   socket.on('create-room',({playerName,avatar})=>{
     const code=genCode(),room={code,hostId:socket.id,players:new Map(),state:'lobby',round:0,used:new Set(),currentContent:null,votes:new Map(),guesses:new Map(),timer:null,phase:'lobby',bombId:null,config:{rounds:10,voteTimer:12,guessTimer:15,categories:Object.keys(CATS),mode:'classic'}};
     const player={id:socket.id,name:playerName,avatar,score:0,isHost:true,eliminated:false};
@@ -201,7 +244,10 @@ io.on('connection',socket=>{
   socket.on('submit-guess',({guessedIds})=>{const code=playerRooms.get(socket.id),room=rooms.get(code);if(!room||room.phase!=='guessing')return;room.guesses.set(socket.id,guessedIds||[]);io.to(code).emit('player-guessed',{guessedCount:room.guesses.size,total:arr(room).length});checkGuesses(room)});
   socket.on('send-reaction',({emoji})=>{const code=playerRooms.get(socket.id);if(code)socket.to(code).emit('reaction',{emoji})});
   socket.on('play-again',()=>{const code=playerRooms.get(socket.id),room=rooms.get(code);if(!room||room.hostId!==socket.id)return;room.state='lobby';room.round=0;room.used.clear();room.votes.clear();room.guesses.clear();allPlayers(room).forEach(p=>{p.score=0;p.eliminated=false});io.to(code).emit('back-to-lobby',{players:allPlayers(room),config:room.config})});
-  socket.on('disconnect',()=>{const code=playerRooms.get(socket.id);if(!code)return;const room=rooms.get(code);if(!room)return;const p=room.players.get(socket.id);room.players.delete(socket.id);playerRooms.delete(socket.id);if(!room.players.size){clearInterval(room.timer);rooms.delete(code);return}if(room.hostId===socket.id){const nh=room.players.values().next().value;room.hostId=nh.id;nh.isHost=true;io.to(code).emit('new-host',{hostId:nh.id})}io.to(code).emit('player-left',{playerName:p?.name||'?',players:allPlayers(room)})});
+  socket.on('disconnect',()=>{
+    onlineUsers.delete(socket.id);
+    const code=playerRooms.get(socket.id);if(!code)return;const room=rooms.get(code);if(!room)return;const p=room.players.get(socket.id);room.players.delete(socket.id);playerRooms.delete(socket.id);if(!room.players.size){clearInterval(room.timer);rooms.delete(code);return}if(room.hostId===socket.id){const nh=room.players.values().next().value;room.hostId=nh.id;nh.isHost=true;io.to(code).emit('new-host',{hostId:nh.id})}io.to(code).emit('player-left',{playerName:p?.name||'?',players:allPlayers(room)});
+  });
 });
 
 const PORT=process.env.PORT||3000;
