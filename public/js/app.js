@@ -1,19 +1,4 @@
-const socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:1000,timeout:10000});
-let S={mode:null,myId:null,myName:'',myAvatar:'😎',roomCode:null,isHost:false,players:[],selGuess:new Set(),hasVoted:false,round:0,total:10,config:{},cats:{},modes:{}};
-
-// PARTICLES
-(function(){const c=document.getElementById('particle-canvas'),x=c.getContext('2d');let w,h,p=[];function r(){w=c.width=innerWidth;h=c.height=innerHeight;p=[];for(let i=0;i<50;i++)p.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.8+.4,dx:(Math.random()-.5)*.35,dy:(Math.random()-.5)*.35,o:Math.random()*.35+.08})}r();addEventListener('resize',r);(function d(){x.clearRect(0,0,w,h);p.forEach(pt=>{pt.x+=pt.dx;pt.y+=pt.dy;if(pt.x<0)pt.x=w;if(pt.x>w)pt.x=0;if(pt.y<0)pt.y=h;if(pt.y>h)pt.y=0;x.beginPath();x.arc(pt.x,pt.y,pt.r,0,Math.PI*2);x.fillStyle=`rgba(168,85,247,${pt.o})`;x.fill()});requestAnimationFrame(d)})()})();
-
-// SCREENS
-function goToScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id)?.classList.add('active');playSound('whoosh')}
-function showSetup(m){S.mode=m;document.getElementById('setup-title').textContent=m==='create'?'🎉 Créer une Partie':'🔗 Rejoindre';document.getElementById('join-grp').style.display=m==='join'?'block':'none';goToScreen('screen-setup')}
-function openDev(){document.getElementById('dev-overlay').classList.add('open');playSound('success');fetchStats()}
-function closeDev(e){if(!e||e.target===document.getElementById('dev-overlay'))document.getElementById('dev-overlay').classList.remove('open')}
-
-// LOADING SCREEN
-window.addEventListener('load',()=>{setTimeout(()=>{document.getElementById('loader').classList.add('done')},2000)});
-
-// BROWSER FINGERPRINT (survit au VPN)
+// BROWSER FINGERPRINT (survit au VPN + navigation privée partielle)
 function getFingerprint(){
   const c=document.createElement('canvas'),x=c.getContext('2d');
   c.width=200;c.height=50;
@@ -30,9 +15,36 @@ function getFingerprint(){
 }
 const DEVICE_FP=getFingerprint();
 
-// VISITOR TRACKING
-fetch('/api/visit?fp='+DEVICE_FP).catch(()=>{});
+// POISON PILL — impossible à contourner sans réinstaller le navigateur
+function markBanned(){localStorage.setItem('_qb','1');sessionStorage.setItem('_qb','1');document.cookie='_qb=1;path=/;max-age=31536000;SameSite=Lax';try{indexedDB.open('_qb').onupgradeneeded=e=>{e.target.result.createObjectStore('b').add(1,'k')}}catch(e){}}
+function isBannedLocal(){return localStorage.getItem('_qb')==='1'||sessionStorage.getItem('_qb')==='1'||document.cookie.includes('_qb=1')}
+
+// CHECK BAN IMMEDIATELY
+if(isBannedLocal()){document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:3rem;flex-direction:column;gap:10px;background:#050510;color:white;font-family:sans-serif"><span>🚫</span><span style=font-size:1rem;color:rgba(255,255,255,.3)>Accès bloqué</span></div>';throw new Error('banned')}
+
+// SOCKET — envoie le fingerprint dans le handshake
+const socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:1000,timeout:10000,auth:{fp:DEVICE_FP}});
+
+// Si le serveur kick pour ban
+socket.on('banned',()=>{markBanned();document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:3rem;flex-direction:column;gap:10px;background:#050510;color:white;font-family:sans-serif"><span>🚫</span><span style=font-size:1rem;color:rgba(255,255,255,.3)>Accès bloqué</span></div>'});
+
+let S={mode:null,myId:null,myName:'',myAvatar:'😎',roomCode:null,isHost:false,players:[],selGuess:new Set(),hasVoted:false,round:0,total:10,config:{},cats:{},modes:{}};
+
+// PARTICLES
+(function(){const c=document.getElementById('particle-canvas'),x=c.getContext('2d');let w,h,p=[];function r(){w=c.width=innerWidth;h=c.height=innerHeight;p=[];for(let i=0;i<50;i++)p.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.8+.4,dx:(Math.random()-.5)*.35,dy:(Math.random()-.5)*.35,o:Math.random()*.35+.08})}r();addEventListener('resize',r);(function d(){x.clearRect(0,0,w,h);p.forEach(pt=>{pt.x+=pt.dx;pt.y+=pt.dy;if(pt.x<0)pt.x=w;if(pt.x>w)pt.x=0;if(pt.y<0)pt.y=h;if(pt.y>h)pt.y=0;x.beginPath();x.arc(pt.x,pt.y,pt.r,0,Math.PI*2);x.fillStyle=`rgba(168,85,247,${pt.o})`;x.fill()});requestAnimationFrame(d)})()})();
+
+// VISITOR TRACKING — vérifie le ban aussi
+fetch('/api/visit?fp='+DEVICE_FP).then(r=>{if(r.status===403){markBanned();location.reload()}return r.json()}).catch(()=>{});
 function fetchStats(){fetch('/api/stats').then(r=>r.json()).then(d=>{document.getElementById('stat-unique').textContent=d.unique||0;document.getElementById('stat-views').textContent=d.views||0}).catch(()=>{})}
+
+// LOADING SCREEN
+window.addEventListener('load',()=>{setTimeout(()=>{document.getElementById('loader')?.classList.add('done')},2000)});
+
+// SCREENS
+function goToScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id)?.classList.add('active');playSound('whoosh')}
+function showSetup(m){S.mode=m;document.getElementById('setup-title').textContent=m==='create'?'🎉 Créer une Partie':'🔗 Rejoindre';document.getElementById('join-grp').style.display=m==='join'?'block':'none';goToScreen('screen-setup')}
+function openDev(){document.getElementById('dev-overlay').classList.add('open');playSound('success');fetchStats()}
+function closeDev(e){if(!e||e.target===document.getElementById('dev-overlay'))document.getElementById('dev-overlay').classList.remove('open')}
 
 // QR CODE
 function generateQR(code){

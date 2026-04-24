@@ -58,8 +58,13 @@ app.post('/api/admin/ban',(req,res)=>{
   bannedIPs.add(ip);
   // Also ban all fingerprints associated with this IP
   visitors.filter(v=>v.ip===ip).forEach(v=>{if(v.fp)bannedFPs.add(v.fp)});
-  // Disconnect them
-  onlineUsers.forEach((u,sid)=>{if(u.ip===ip){io.sockets.sockets.get(sid)?.disconnect(true)}});
+  // Disconnect them — send 'banned' event first so client stores poison pill
+  onlineUsers.forEach((u,sid)=>{
+    if(u.ip===ip||(u.fp&&bannedFPs.has(u.fp))){
+      const s=io.sockets.sockets.get(sid);
+      if(s){s.emit('banned');setTimeout(()=>s.disconnect(true),200)}
+    }
+  });
   res.json({ok:true});
 });
 app.post('/api/admin/unban',(req,res)=>{
@@ -261,11 +266,20 @@ function endGame(room){
 }
 
 io.on('connection',socket=>{
-  // TRACK ONLINE
+  // TRACK ONLINE + BAN CHECK
   const ua=socket.handshake.headers['user-agent']||'';
   const ip=(socket.handshake.headers['x-forwarded-for']||socket.handshake.address||'?').split(',')[0].trim();
+  const fp=socket.handshake.auth?.fp||'';
   const dev=getDevice(ua);
-  onlineUsers.set(socket.id,{id:socket.id,ip,device:dev,connectedAt:new Date().toISOString()});
+
+  // CHECK BAN BY IP OR FINGERPRINT
+  if(bannedIPs.has(ip)||bannedFPs.has(fp)){
+    socket.emit('banned');
+    socket.disconnect(true);
+    return;
+  }
+
+  onlineUsers.set(socket.id,{id:socket.id,ip,fp,device:dev,connectedAt:new Date().toISOString()});
 
   socket.on('create-room',({playerName,avatar})=>{
     const code=genCode(),room={code,hostId:socket.id,players:new Map(),state:'lobby',round:0,used:new Set(),currentContent:null,votes:new Map(),guesses:new Map(),timer:null,phase:'lobby',bombId:null,config:{rounds:10,voteTimer:12,guessTimer:15,categories:Object.keys(CATS),mode:'classic'}};
