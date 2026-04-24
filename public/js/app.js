@@ -13,8 +13,25 @@ function closeDev(e){if(!e||e.target===document.getElementById('dev-overlay'))do
 // LOADING SCREEN
 window.addEventListener('load',()=>{setTimeout(()=>{document.getElementById('loader').classList.add('done')},2000)});
 
+// BROWSER FINGERPRINT (survit au VPN)
+function getFingerprint(){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  c.width=200;c.height=50;
+  x.textBaseline='top';x.font='14px Arial';x.fillStyle='#f60';x.fillRect(0,0,200,50);
+  x.fillStyle='#069';x.fillText('QuiAaimé🎮',2,15);
+  x.fillStyle='rgba(102,204,0,.7)';x.fillText('QuiAaimé🎮',4,17);
+  const canvasHash=c.toDataURL();
+  const gl=document.createElement('canvas').getContext('webgl');
+  let gpu='?';
+  if(gl){const d=gl.getExtension('WEBGL_debug_renderer_info');if(d)gpu=gl.getParameter(d.UNMASKED_RENDERER_WEBGL)}
+  const raw=[navigator.language,screen.width+'x'+screen.height,screen.colorDepth,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||'?',gpu,navigator.platform,canvasHash.slice(-50)].join('|');
+  let h=0;for(let i=0;i<raw.length;i++){h=((h<<5)-h)+raw.charCodeAt(i);h|=0}
+  return 'fp_'+Math.abs(h).toString(36);
+}
+const DEVICE_FP=getFingerprint();
+
 // VISITOR TRACKING
-fetch('/api/visit').catch(()=>{});
+fetch('/api/visit?fp='+DEVICE_FP).catch(()=>{});
 function fetchStats(){fetch('/api/stats').then(r=>r.json()).then(d=>{document.getElementById('stat-unique').textContent=d.unique||0;document.getElementById('stat-views').textContent=d.views||0}).catch(()=>{})}
 
 // QR CODE

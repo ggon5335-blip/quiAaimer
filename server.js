@@ -20,11 +20,20 @@ function getDevice(ua){
 app.get('/api/visit',(req,res)=>{
   const ip=(req.headers['x-forwarded-for']||req.connection.remoteAddress||'unknown').split(',')[0].trim();
   const ua=req.headers['user-agent']||'';
+  const fp=req.query.fp||'';
   const dev=getDevice(ua);
+  // Check ban by fingerprint too
+  if(bannedFPs.has(fp))return res.status(403).json({banned:true});
   const existing=visitors.find(v=>v.ip===ip);
+  const existingFP=fp?visitors.find(v=>v.fp===fp):null;
   if(existing){
-    existing.ua=ua;existing.device=dev;
-  }else{visitors.push({ip,ua,device:dev,visits:1,firstSeen:new Date().toISOString(),lastSeen:new Date().toISOString()})}
+    existing.ua=ua;existing.device=dev;if(fp)existing.fp=fp;
+  }else if(existingFP){
+    // Same device, new IP (VPN) — don't count as new visitor
+    existingFP.ua=ua;existingFP.device=dev;existingFP.ip=ip;
+  }else{
+    visitors.push({ip,ua,fp,device:dev,visits:1,firstSeen:new Date().toISOString(),lastSeen:new Date().toISOString()});
+  }
   res.json({unique:visitors.length,views:visitors.reduce((a,v)=>a+v.visits,0)});
 });
 app.get('/api/stats',(req,res)=>res.json({unique:visitors.length,views:visitors.reduce((a,v)=>a+v.visits,0),since:visitors[0]?.firstSeen||new Date().toISOString()}));
@@ -40,13 +49,34 @@ app.get('/api/admin/data',(req,res)=>{
   res.json({visitors,online,totalViews,uniqueCount:visitors.length,mobileCount,pcCount,rooms:rooms?.size||0,bannedIPs:[...bannedIPs],leaderboard:globalLeaderboard.slice(0,50)});
 });
 
-// BAN SYSTEM
+// BAN SYSTEM (IP + Fingerprint)
 const bannedIPs=new Set();
-app.post('/api/admin/ban',(req,res)=>{if(req.query.key!==ADMIN_KEY)return res.status(403).json({error:'nope'});const ip=req.query.ip;if(ip){bannedIPs.add(ip);onlineUsers.forEach((u,sid)=>{if(u.ip===ip){io.sockets.sockets.get(sid)?.disconnect(true)}});res.json({ok:true,banned:[...bannedIPs]})}else res.json({error:'no ip'})});
-app.post('/api/admin/unban',(req,res)=>{if(req.query.key!==ADMIN_KEY)return res.status(403).json({error:'nope'});bannedIPs.delete(req.query.ip);res.json({ok:true})});
+const bannedFPs=new Set();
+app.post('/api/admin/ban',(req,res)=>{
+  if(req.query.key!==ADMIN_KEY)return res.status(403).json({error:'nope'});
+  const ip=req.query.ip;if(!ip)return res.json({error:'no ip'});
+  bannedIPs.add(ip);
+  // Also ban all fingerprints associated with this IP
+  visitors.filter(v=>v.ip===ip).forEach(v=>{if(v.fp)bannedFPs.add(v.fp)});
+  // Disconnect them
+  onlineUsers.forEach((u,sid)=>{if(u.ip===ip){io.sockets.sockets.get(sid)?.disconnect(true)}});
+  res.json({ok:true});
+});
+app.post('/api/admin/unban',(req,res)=>{
+  if(req.query.key!==ADMIN_KEY)return res.status(403).json({error:'nope'});
+  bannedIPs.delete(req.query.ip);
+  visitors.filter(v=>v.ip===req.query.ip).forEach(v=>{if(v.fp)bannedFPs.delete(v.fp)});
+  res.json({ok:true});
+});
 
-// Check ban on visit
-app.use((req,res,next)=>{const ip=(req.headers['x-forwarded-for']||req.connection.remoteAddress||'').split(',')[0].trim();if(bannedIPs.has(ip)&&!req.url.includes('/admin'))return res.status(403).send('🚫 Accès bloqué');next()});
+// Check ban on visit (IP + Fingerprint)
+app.use((req,res,next)=>{
+  if(req.url.includes('/admin'))return next();
+  const ip=(req.headers['x-forwarded-for']||req.connection.remoteAddress||'').split(',')[0].trim();
+  const fp=req.query?.fp||'';
+  if(bannedIPs.has(ip)||bannedFPs.has(fp))return res.status(403).send('🚫 Accès bloqué');
+  next();
+});
 
 // GLOBAL LEADERBOARD
 const globalLeaderboard=[];
