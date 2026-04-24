@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>WhoLiked 🎉</title>
+  <link rel="manifest" href="/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+  <canvas id="confetti-canvas"></canvas>
+  <div id="reactions-container"></div>
+  <div id="toast-container"></div>
+  <div id="app">
+
+    <!-- HOME -->
+    <div class="screen active" id="screen-home">
+      <div class="home-wrap">
+        <div class="badge-top">✨ Le #1 des jeux de soirée</div>
+        <div class="logo-section">
+          <div class="logo-glow"></div>
+          <div class="logo-ring"><span class="rng" style="--i:0">😂</span><span class="rng" style="--i:1">🤫</span><span class="rng" style="--i:2">😱</span><span class="rng" style="--i:3">🔥</span><span class="rng" style="--i:4">💀</span><span class="rng" style="--i:5">🤩</span><span class="rng" style="--i:6">😈</span><span class="rng" style="--i:7">👀</span></div>
+          <h1 class="logo"><span class="lw">WHO</span><span class="ll">LIKED</span><span class="lq">?</span></h1>
+          <p class="logo-sub">Découvre les goûts secrets de tes amis</p>
+        </div>
+        <div class="feat-row">
+          <div class="feat"><div class="feat-i">🎯</div><div class="feat-v">60+</div><div class="feat-l">Questions</div></div>
+          <div class="feat"><div class="feat-i">👥</div><div class="feat-v">2-10</div><div class="feat-l">Joueurs</div></div>
+          <div class="feat"><div class="feat-i">🎮</div><div class="feat-v">5</div><div class="feat-l">Modes</div></div>
+        </div>
+        <div class="how"><div class="hw"><span class="hwn">1</span><span>Vote en secret</span></div><span class="hwa">→</span><div class="hw"><span class="hwn">2</span><span>Devine qui</span></div><span class="hwa">→</span><div class="hw"><span class="hwn">3</span><span>🎰 Roulette !</span></div></div>
+        <div class="hbtns">
+          <button class="btn btn-glow" onclick="showSetup('create')"><span class="btn-shine"></span><span class="bi">🎉</span>Créer une Partie<span class="ba">→</span></button>
+          <button class="btn btn-glass" onclick="showSetup('join')"><span class="bi">🔗</span>Rejoindre<span class="ba">→</span></button>
+        </div>
+        <div class="hfoot">Fonctionne sur 📱 et 💻</div>
+      </div>
+    </div>
+
+    <!-- SETUP -->
+    <div class="screen" id="screen-setup">
+      <button class="btn-back" onclick="goToScreen('screen-home')">← Retour</button>
+      <div class="setup-wrap">
+        <h2 class="stitle" id="setup-title">🎉 Créer</h2>
+        <div class="field"><label>Ton pseudo</label><div class="inp-w"><span class="inp-i">✏️</span><input id="input-name" placeholder="Ex: King_Dodo" maxlength="15" autocomplete="off"></div></div>
+        <div class="field"><label>Ton avatar</label><div class="avg" id="avatar-grid">
+          <button class="av selected" data-avatar="😎">😎</button><button class="av" data-avatar="🤩">🤩</button><button class="av" data-avatar="🥳">🥳</button><button class="av" data-avatar="👻">👻</button><button class="av" data-avatar="🦊">🦊</button><button class="av" data-avatar="🐸">🐸</button><button class="av" data-avatar="🌈">🌈</button><button class="av" data-avatar="⭐">⭐</button><button class="av" data-avatar="🔥">🔥</button><button class="av" data-avatar="💀">💀</button><button class="av" data-avatar="🦄">🦄</button><button class="av" data-avatar="👽">👽</button><button class="av" data-avatar="🤖">🤖</button><button class="av" data-avatar="🎭">🎭</button><button class="av" data-avatar="🧸">🧸</button><button class="av" data-avatar="🐱">🐱</button><button class="av" data-avatar="🐺">🐺</button><button class="av" data-avatar="🦋">🦋</button><button class="av" data-avatar="🍄">🍄</button><button class="av" data-avatar="💎">💎</button>
+        </div></div>
+        <div class="field" id="join-grp" style="display:none"><label>Code de la Room</label><div class="inp-w"><span class="inp-i">🔑</span><input id="input-code" class="code-inp" placeholder="• • • •" maxlength="4" inputmode="numeric" autocomplete="off"></div></div>
+        <button class="btn btn-glow btn-full" onclick="handleGo()"><span class="btn-shine"></span><span class="bi">🚀</span>C'est parti !</button>
+      </div>
+    </div>
+
+    <!-- LOBBY -->
+    <div class="screen" id="screen-lobby">
+      <div class="lobby-w">
+        <h2 class="stitle">🏠 Salle d'attente</h2>
+        <div class="pin-box" onclick="copyCode()"><div class="pin-lbl">CODE PIN</div><div class="pin-val" id="lobby-code">----</div><div class="pin-hint">📋 Tap pour copier</div></div>
+
+        <!-- CONFIG HOST -->
+        <div class="cfg-panel" id="cfg-panel">
+          <div class="cfg-title">⚙️ Configuration</div>
+          <!-- MODE -->
+          <div class="cfg-section"><div class="cfg-lbl">🎮 Mode de jeu</div><div class="mode-grid" id="mode-grid"></div></div>
+          <!-- ROUNDS -->
+          <div class="cfg-row"><span class="cfg-lbl">🎯 Rounds</span><div class="cfg-opts" id="opt-rounds"><button class="co" data-val="5">5</button><button class="co on" data-val="10">10</button><button class="co" data-val="15">15</button><button class="co" data-val="20">20</button></div></div>
+          <!-- VOTE TIMER -->
+          <div class="cfg-row"><span class="cfg-lbl">⏱️ Vote</span><div class="cfg-opts" id="opt-vote"><button class="co" data-val="8">8s</button><button class="co on" data-val="12">12s</button><button class="co" data-val="15">15s</button><button class="co" data-val="20">20s</button></div></div>
+          <!-- GUESS TIMER -->
+          <div class="cfg-row"><span class="cfg-lbl">🤔 Guess</span><div class="cfg-opts" id="opt-guess"><button class="co" data-val="10">10s</button><button class="co on" data-val="15">15s</button><button class="co" data-val="20">20s</button><button class="co" data-val="25">25s</button></div></div>
+          <!-- CATEGORIES -->
+          <div class="cfg-section"><div class="cfg-lbl">📂 Catégories</div><div class="cat-grid" id="cat-grid"></div></div>
+        </div>
+        <!-- CONFIG SUMMARY NON-HOST -->
+        <div class="cfg-sum" id="cfg-sum" style="display:none"></div>
+
+        <div class="plrs" id="lobby-plrs"></div>
+        <div class="lobby-bot">
+          <p class="pcnt"><span id="pcnt">0</span>/10 joueurs</p>
+          <button class="btn btn-glow btn-full" id="btn-start" style="display:none" onclick="startGame()"><span class="btn-shine"></span><span class="bi">🎮</span>Lancer !</button>
+          <p class="wait" id="wait-txt">⏳ En attente de l'hôte...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- VOTE -->
+    <div class="screen" id="screen-vote">
+      <div class="hud"><div class="hud-b" id="v-rb">1/10</div><div class="hud-t"><svg viewBox="0 0 100 100"><circle class="tc-bg" cx="50" cy="50" r="44"/><circle class="tc-fg" cx="50" cy="50" r="44" id="v-tc"/></svg><span class="tn" id="v-tn">12</span></div><div class="hud-b"><span id="vc">0</span>/<span id="vt">0</span> ✓</div></div>
+      <div class="vote-w">
+        <div class="qcard" id="vote-card"><div class="qcat" id="v-cat">🍔</div><div class="qemoji" id="v-emo">🍕</div><div class="qtxt" id="v-txt">Question</div><div class="qsub">Tu aimes ça ? 🤔</div></div>
+        <div class="stip" id="stip"><span class="st-l">💔 Nope</span>← Swipe →<span class="st-r">❤️ J'aime</span></div>
+        <div class="vbtns" id="vbtns">
+          <button class="vb vb-no" onclick="submitVote(false)"><span class="vbe">💔</span>Nope</button>
+          <button class="vb vb-yes" onclick="submitVote(true)"><span class="vbe">❤️</span>J'aime</button>
+        </div>
+        <div class="vdone" id="vdone" style="display:none"><div class="chk">✓</div><p>Vote enregistré !</p></div>
+      </div>
+    </div>
+
+    <!-- GUESS -->
+    <div class="screen" id="screen-guess">
+      <div class="hud"><div class="hud-b" id="g-rb">1/10</div><div class="hud-t"><svg viewBox="0 0 100 100"><circle class="tc-bg" cx="50" cy="50" r="44"/><circle class="tc-fg" cx="50" cy="50" r="44" id="g-tc"/></svg><span class="tn" id="g-tn">15</span></div><div class="hud-b"><span id="gc">0</span>/<span id="gt">0</span> ✓</div></div>
+      <div class="guess-w">
+        <div class="gq"><span class="gqe" id="gq-e">🍕</span><span class="gqt" id="gq-t">Qui a aimé ?</span></div>
+        <p class="ginst">Sélectionne ceux qui ont aimé !</p>
+        <div class="ggrid" id="ggrid"></div>
+        <button class="btn btn-glow btn-full" id="btn-guess" onclick="confirmGuess()"><span class="btn-shine"></span><span class="bi">✅</span>Confirmer</button>
+      </div>
+    </div>
+
+    <!-- ROULETTE -->
+    <div class="screen" id="screen-roulette">
+      <div class="roul-w">
+        <h2 class="roul-title">🎰 Qui a aimé...</h2>
+        <div class="roul-q"><span class="roul-emo" id="r-emo">🍕</span><span class="roul-txt" id="r-txt">Question</span></div>
+        <div class="roul-ring" id="roul-ring"></div>
+        <div class="roul-reveal" id="roul-reveal" style="display:none"></div>
+        <div class="roul-suspense" id="roul-suspense">🥁 Roulement de tambour...</div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="screen" id="screen-results">
+      <div class="res-w">
+        <h2 class="stitle" id="res-title">Round 1/10</h2>
+        <div class="qcard qmini"><div class="qemoji" id="res-emo" style="font-size:3rem">🍕</div><div class="qtxt" id="res-txt" style="font-size:1rem">Q</div></div>
+        <div class="rev-box"><div class="rev-title">Ceux qui ont aimé ❤️</div><div class="likers" id="likers"></div><p class="nolk" id="nolk" style="display:none">Personne n'a aimé 💔</p></div>
+        <div class="sbox"><div class="slbl">Tes points</div><div class="sval" id="my-pts">+0</div></div>
+        <div class="rbar"><button class="rb" onclick="sendReaction('😂')">😂</button><button class="rb" onclick="sendReaction('💀')">💀</button><button class="rb" onclick="sendReaction('😱')">😱</button><button class="rb" onclick="sendReaction('🤣')">🤣</button><button class="rb" onclick="sendReaction('👀')">👀</button><button class="rb" onclick="sendReaction('🔥')">🔥</button></div>
+        <div class="nxt">Prochain round dans <span id="nxt-t">5</span>s...</div>
+      </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div class="screen" id="screen-gameover">
+      <div class="go-w">
+        <h2 class="go-title">🏆 Fin de la Partie !</h2>
+        <div class="podium">
+          <div class="pod pod-2" id="pod-2"><div class="pod-av"></div><div class="pod-nm"></div><div class="pod-sc"></div><div class="pod-bar">🥈</div></div>
+          <div class="pod pod-1" id="pod-1"><div class="pod-crown">👑</div><div class="pod-av"></div><div class="pod-nm"></div><div class="pod-sc"></div><div class="pod-bar">🥇</div></div>
+          <div class="pod pod-3" id="pod-3"><div class="pod-av"></div><div class="pod-nm"></div><div class="pod-sc"></div><div class="pod-bar">🥉</div></div>
+        </div>
+        <div class="ranks" id="ranks"></div>
+        <div class="go-btns">
+          <button class="btn btn-glow btn-full" id="btn-replay" style="display:none" onclick="playAgain()"><span class="btn-shine"></span><span class="bi">🔄</span>Rejouer !</button>
+          <button class="btn btn-glass btn-full" onclick="goHome()"><span class="bi">🏠</span>Accueil</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
