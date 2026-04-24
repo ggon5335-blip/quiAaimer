@@ -23,8 +23,6 @@ app.get('/api/visit',(req,res)=>{
   const dev=getDevice(ua);
   const existing=visitors.find(v=>v.ip===ip);
   if(existing){
-    const diff=Date.now()-new Date(existing.lastSeen).getTime();
-    if(diff>30*60*1000){existing.visits++;existing.lastSeen=new Date().toISOString()}
     existing.ua=ua;existing.device=dev;
   }else{visitors.push({ip,ua,device:dev,visits:1,firstSeen:new Date().toISOString(),lastSeen:new Date().toISOString()})}
   res.json({unique:visitors.length,views:visitors.reduce((a,v)=>a+v.visits,0)});
