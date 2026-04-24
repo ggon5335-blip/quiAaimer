@@ -138,7 +138,6 @@ function spawnR(e){const c=document.getElementById('reactions-container'),el=doc
 function updTimer(ph,sec,max){const pre=ph==='vote'?'v':'g';const tn=document.getElementById(`${pre}-tn`),tc=document.getElementById(`${pre}-tc`);tn.textContent=sec;tc.style.strokeDashoffset=276-(sec/max)*276;if(sec<=3){tn.classList.add('urg');tc.classList.add('urg');playSound('tick')}else{tn.classList.remove('urg');tc.classList.remove('urg')}}
 
 // SOCKET EVENTS
-socket.on('connect',()=>{S.myId=socket.id});
 socket.on('room-created',d=>{S.roomCode=d.code;S.isHost=true;S.players=d.players;document.getElementById('lobby-code').textContent=d.code;renderLobby(d.players,S.myId);initConfig(d.categories,d.modes,{rounds:10,voteTimer:12,guessTimer:15,categories:Object.keys(d.categories),mode:'classic'},true);goToScreen('screen-lobby');playSound('success')});
 socket.on('room-joined',d=>{S.roomCode=d.code;S.isHost=false;S.players=d.players;document.getElementById('lobby-code').textContent=d.code;renderLobby(d.players,d.hostId);initConfig(d.categories,d.modes,d.config,false);goToScreen('screen-lobby');playSound('success')});
 socket.on('player-joined',d=>{S.players=d.players;renderLobby(d.players,null);showToast(`${d.player.avatar} ${d.player.name} a rejoint !`)});
@@ -177,7 +176,8 @@ socket.on('game-over',d=>{renderGO(d.rankings);goToScreen('screen-gameover')});
 socket.on('back-to-lobby',d=>{S.players=d.players;renderLobby(d.players,null);if(d.config){S.config=d.config;initConfig(S.cats,S.modes,d.config,S.isHost)}goToScreen('screen-lobby');showToast('Nouvelle partie ! 🎉')});
 socket.on('reaction',d=>spawnR(d.emoji));
 socket.on('error-msg',d=>showToast(d.message,1));
-socket.on('disconnect',()=>showToast('Déconnecté...',1));
+socket.on('disconnect',()=>{if(S.roomCode)showToast('Déconnecté... Reconnexion...',1)});
+socket.on('connect',()=>{S.myId=socket.id;if(S.roomCode)showToast('Reconnecté ✅')});
 
 // TOAST
 function showToast(m,err){const c=document.getElementById('toast-container'),t=document.createElement('div');t.className=`toast${err?' err':''}`;t.textContent=m;c.appendChild(t);setTimeout(()=>t.remove(),3000)}
