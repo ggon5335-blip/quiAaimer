@@ -7,8 +7,12 @@ let S={mode:null,myId:null,myName:'',myAvatar:'😎',roomCode:null,isHost:false,
 // SCREENS
 function goToScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id)?.classList.add('active');playSound('whoosh')}
 function showSetup(m){S.mode=m;document.getElementById('setup-title').textContent=m==='create'?'🎉 Créer une Partie':'🔗 Rejoindre';document.getElementById('join-grp').style.display=m==='join'?'block':'none';goToScreen('screen-setup')}
-function openDev(){document.getElementById('dev-overlay').classList.add('open');playSound('success')}
+function openDev(){document.getElementById('dev-overlay').classList.add('open');playSound('success');fetchStats()}
 function closeDev(e){if(!e||e.target===document.getElementById('dev-overlay'))document.getElementById('dev-overlay').classList.remove('open')}
+
+// VISITOR TRACKING
+fetch('/api/visit').catch(()=>{});
+function fetchStats(){fetch('/api/stats').then(r=>r.json()).then(d=>{document.getElementById('stat-unique').textContent=d.unique||0;document.getElementById('stat-views').textContent=d.views||0}).catch(()=>{})}
 
 // AVATAR
 document.querySelectorAll('.av').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.av').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');S.myAvatar=b.dataset.avatar;playSound('tap');navigator.vibrate?.(30)}));
