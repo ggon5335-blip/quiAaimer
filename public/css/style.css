@@ -197,4 +197,54 @@ body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-tap-highli
 .flt{position:absolute;bottom:0;font-size:1.8rem;animation:fu 3s ease-out forwards}
 @keyframes fu{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-100vh) scale(1.3)}}
 
-@media(max-width:400px){.logo{font-size:2.4rem}.avg{grid-template-columns:repeat(8,1fr)}.qemoji{font-size:3.2rem}.mode-grid{grid-template-columns:1fr}.pod-bar{width:62px}}
+/* DEV BUTTON */
+.dev-btn{background:none;border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.35);padding:8px 18px;border-radius:20px;font:600 .7rem var(--f);cursor:pointer;transition:all .3s;backdrop-filter:blur(6px)}
+.dev-btn:hover{color:var(--t);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.05)}
+
+/* DEV OVERLAY */
+.dev-overlay{position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,.7);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .35s;padding:20px}
+.dev-overlay.open{opacity:1;pointer-events:auto}
+
+/* DEV MODAL */
+.dev-modal{position:relative;width:100%;max-width:380px;background:linear-gradient(165deg,rgba(15,12,25,.95),rgba(20,15,35,.98));border:1px solid rgba(124,58,237,.2);border-radius:24px;padding:32px 28px;text-align:center;overflow:hidden;transform:scale(.85) translateY(30px);transition:transform .4s cubic-bezier(.34,1.56,.64,1);box-shadow:0 25px 80px rgba(0,0,0,.6),0 0 60px rgba(124,58,237,.12),inset 0 1px 0 rgba(255,255,255,.06)}
+.dev-overlay.open .dev-modal{transform:scale(1) translateY(0)}
+.dev-modal::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:conic-gradient(from 0deg,transparent,rgba(124,58,237,.06),transparent,rgba(236,72,153,.06),transparent);animation:modalSpin 8s linear infinite;pointer-events:none}
+@keyframes modalSpin{to{transform:rotate(360deg)}}
+.dev-modal::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,.4),rgba(236,72,153,.4),transparent)}
+
+.dev-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--td);width:32px;height:32px;border-radius:50%;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:1}
+.dev-close:hover{background:rgba(255,255,255,.12);color:var(--t);transform:rotate(90deg)}
+
+/* DEV HEADER */
+.dev-header{display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:1}
+.dev-avatar-ring{width:90px;height:90px;border-radius:50%;padding:3px;background:conic-gradient(from 0deg,var(--p),var(--pk),var(--cy),var(--p));animation:ringRotate 4s linear infinite}
+@keyframes ringRotate{to{transform:rotate(360deg)}}
+.dev-avatar{width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,rgba(15,12,25,1),rgba(25,20,40,1));display:flex;align-items:center;justify-content:center;font-size:2.8rem}
+.dev-badge{background:linear-gradient(135deg,var(--p),var(--pk));padding:4px 16px;border-radius:20px;font-size:.6rem;font-weight:800;letter-spacing:2px;color:#fff;box-shadow:0 4px 20px rgba(124,58,237,.35)}
+
+/* DEV NAME */
+.dev-name{font-size:1.8rem;font-weight:900;margin-top:14px;position:relative;z-index:1;background:linear-gradient(135deg,#fff,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 10px rgba(196,181,253,.3))}
+.dev-aka{font-size:.75rem;color:var(--td);margin-top:2px;position:relative;z-index:1;font-style:italic}
+
+/* DEV DIVIDER */
+.dev-divider{width:60px;height:2px;margin:18px auto;background:linear-gradient(90deg,transparent,var(--p),var(--pk),transparent);border-radius:2px}
+
+/* DEV SOCIAL */
+.dev-social{position:relative;z-index:1;margin:4px 0}
+.dev-snap{display:flex;align-items:center;gap:14px;padding:14px 18px;background:rgba(255,252,0,.04);border:1px solid rgba(255,252,0,.15);border-radius:14px;cursor:pointer;transition:all .3s}
+.dev-snap:hover{background:rgba(255,252,0,.08);border-color:rgba(255,252,0,.3);transform:translateY(-2px);box-shadow:0 8px 30px rgba(255,252,0,.1)}
+.dev-snap:active{transform:scale(.97)}
+.snap-icon{width:32px;height:32px;filter:drop-shadow(0 0 8px rgba(255,252,0,.4))}
+.snap-info{flex:1;text-align:left}
+.snap-label{font-size:.6rem;color:rgba(255,252,0,.6);font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.snap-user{font-size:1rem;font-weight:800;color:#FFFC00;margin-top:1px}
+.snap-arrow{color:rgba(255,252,0,.4);font-size:1.1rem;transition:transform .2s}
+.dev-snap:hover .snap-arrow{transform:translateX(4px);color:rgba(255,252,0,.7)}
+
+/* DEV FOOTER */
+.dev-footer{display:flex;justify-content:center;gap:20px;margin-top:18px;position:relative;z-index:1}
+.dev-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+.ds-val{font-size:1.3rem}.ds-lbl{font-size:.55rem;color:var(--td);font-weight:600}
+.dev-copy{font-size:.55rem;color:rgba(255,255,255,.15);margin-top:16px;position:relative;z-index:1}
+
+@media(max-width:400px){.logo{font-size:2.4rem}.avg{grid-template-columns:repeat(8,1fr)}.qemoji{font-size:3.2rem}.mode-grid{grid-template-columns:1fr}.pod-bar{width:62px}.dev-modal{padding:24px 20px}}
