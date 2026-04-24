@@ -1,4 +1,4 @@
-const socket=io();
+const socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:1000,timeout:10000});
 let S={mode:null,myId:null,myName:'',myAvatar:'😎',roomCode:null,isHost:false,players:[],selGuess:new Set(),hasVoted:false,round:0,total:10,config:{},cats:{},modes:{}};
 
 // PARTICLES
@@ -176,8 +176,9 @@ socket.on('game-over',d=>{renderGO(d.rankings);goToScreen('screen-gameover')});
 socket.on('back-to-lobby',d=>{S.players=d.players;renderLobby(d.players,null);if(d.config){S.config=d.config;initConfig(S.cats,S.modes,d.config,S.isHost)}goToScreen('screen-lobby');showToast('Nouvelle partie ! 🎉')});
 socket.on('reaction',d=>spawnR(d.emoji));
 socket.on('error-msg',d=>showToast(d.message,1));
-socket.on('disconnect',()=>{if(S.roomCode)showToast('Déconnecté... Reconnexion...',1)});
-socket.on('connect',()=>{S.myId=socket.id;if(S.roomCode)showToast('Reconnecté ✅')});
+let discoTimer=null;
+socket.on('disconnect',()=>{discoTimer=setTimeout(()=>{if(S.roomCode)showToast('Connexion perdue... Reconnexion...',1)},3000)});
+socket.on('connect',()=>{S.myId=socket.id;if(discoTimer){clearTimeout(discoTimer);discoTimer=null}});
 
 // TOAST
 function showToast(m,err){const c=document.getElementById('toast-container'),t=document.createElement('div');t.className=`toast${err?' err':''}`;t.textContent=m;c.appendChild(t);setTimeout(()=>t.remove(),3000)}
