@@ -37,10 +37,36 @@ app.get('/api/admin/data',(req,res)=>{
   const mobileCount=visitors.filter(v=>v.device.type.includes('Mobile')).length;
   const pcCount=visitors.filter(v=>v.device.type.includes('PC')).length;
   const online=Array.from(onlineUsers.values());
-  res.json({visitors,online,totalViews,uniqueCount:visitors.length,mobileCount,pcCount,rooms:rooms?.size||0});
+  res.json({visitors,online,totalViews,uniqueCount:visitors.length,mobileCount,pcCount,rooms:rooms?.size||0,bannedIPs:[...bannedIPs],leaderboard:globalLeaderboard.slice(0,50)});
 });
 
+// BAN SYSTEM
+const bannedIPs=new Set();
+app.post('/api/admin/ban',(req,res)=>{if(req.query.key!==ADMIN_KEY)return res.status(403).json({error:'nope'});const ip=req.query.ip;if(ip){bannedIPs.add(ip);onlineUsers.forEach((u,sid)=>{if(u.ip===ip){io.sockets.sockets.get(sid)?.disconnect(true)}});res.json({ok:true,banned:[...bannedIPs]})}else res.json({error:'no ip'})});
+app.post('/api/admin/unban',(req,res)=>{if(req.query.key!==ADMIN_KEY)return res.status(403).json({error:'nope'});bannedIPs.delete(req.query.ip);res.json({ok:true})});
+
+// Check ban on visit
+app.use((req,res,next)=>{const ip=(req.headers['x-forwarded-for']||req.connection.remoteAddress||'').split(',')[0].trim();if(bannedIPs.has(ip)&&!req.url.includes('/admin'))return res.status(403).send('🚫 Accès bloqué');next()});
+
+// GLOBAL LEADERBOARD
+const globalLeaderboard=[];
+app.get('/api/leaderboard',(req,res)=>res.json(globalLeaderboard.slice(0,20)));
+
+// ACHIEVEMENTS
+const ACHIEVEMENTS=[
+  {id:'first_win',name:'Première Victoire',desc:'Gagner une partie',icon:'🏆',condition:'wins>=1'},
+  {id:'five_wins',name:'Serial Winner',desc:'Gagner 5 parties',icon:'👑',condition:'wins>=5'},
+  {id:'perfect',name:'Parfait !',desc:'Round parfait (max points)',icon:'💎',condition:'perfectRounds>=1'},
+  {id:'speed_demon',name:'Speed Demon',desc:'Gagner en mode Speed',icon:'⚡',condition:'speedWins>=1'},
+  {id:'survivor',name:'Survivant',desc:'Gagner en mode Élimination',icon:'🛡️',condition:'elimWins>=1'},
+  {id:'social',name:'Social Butterfly',desc:'Jouer 10 parties',icon:'🦋',condition:'gamesPlayed>=10'},
+  {id:'veteran',name:'Vétéran',desc:'Jouer 25 parties',icon:'🎖️',condition:'gamesPlayed>=25'},
+  {id:'bomber',name:'Démineur',desc:'Gagner en mode Bombe',icon:'💣',condition:'bombWins>=1'},
+];
+app.get('/api/achievements',(req,res)=>res.json(ACHIEVEMENTS));
+
 app.get('/health',(req,res)=>res.json({status:'ok',rooms:rooms?.size||0}));
+app.use(express.json());
 app.use(express.static(path.join(__dirname,'public')));
 
 const CONTENT=[
@@ -194,7 +220,14 @@ function endRound(room){
 function endGame(room){
   room.state='finished';clearInterval(room.timer);
   const rankings=allPlayers(room).map(p=>({id:p.id,name:p.name,avatar:p.avatar,score:p.score,eliminated:p.eliminated})).sort((a,b)=>b.score-a.score);
-  io.to(room.code).emit('game-over',{rankings});
+  // Update global leaderboard
+  rankings.forEach((p,i)=>{
+    const existing=globalLeaderboard.find(l=>l.name===p.name&&l.avatar===p.avatar);
+    if(existing){existing.totalScore+=p.score;existing.gamesPlayed++;if(i===0)existing.wins++;existing.lastPlayed=new Date().toISOString()}
+    else{globalLeaderboard.push({name:p.name,avatar:p.avatar,totalScore:p.score,wins:i===0?1:0,gamesPlayed:1,lastPlayed:new Date().toISOString()})}
+  });
+  globalLeaderboard.sort((a,b)=>b.totalScore-a.totalScore);
+  io.to(room.code).emit('game-over',{rankings,leaderboard:globalLeaderboard.slice(0,10)});
 }
 
 io.on('connection',socket=>{

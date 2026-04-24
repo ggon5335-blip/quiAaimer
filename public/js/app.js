@@ -10,9 +10,49 @@ function showSetup(m){S.mode=m;document.getElementById('setup-title').textConten
 function openDev(){document.getElementById('dev-overlay').classList.add('open');playSound('success');fetchStats()}
 function closeDev(e){if(!e||e.target===document.getElementById('dev-overlay'))document.getElementById('dev-overlay').classList.remove('open')}
 
+// LOADING SCREEN
+window.addEventListener('load',()=>{setTimeout(()=>{document.getElementById('loader').classList.add('done')},2000)});
+
 // VISITOR TRACKING
 fetch('/api/visit').catch(()=>{});
 function fetchStats(){fetch('/api/stats').then(r=>r.json()).then(d=>{document.getElementById('stat-unique').textContent=d.unique||0;document.getElementById('stat-views').textContent=d.views||0}).catch(()=>{})}
+
+// QR CODE
+function generateQR(code){
+  const url=`${location.origin}?join=${code}`;
+  document.getElementById('qr-img').src=`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=7c3aed`;
+  document.getElementById('qr-url').textContent=url;
+}
+
+// LEADERBOARD
+function openLeaderboard(){
+  document.getElementById('lb-overlay').classList.add('open');playSound('success');
+  fetch('/api/leaderboard').then(r=>r.json()).then(lb=>{
+    const el=document.getElementById('lb-list');
+    if(!lb.length){el.innerHTML='<div class="lb-empty">Aucune partie jouée encore 🎮</div>';return}
+    el.innerHTML='';lb.forEach((p,i)=>{
+      const r=document.createElement('div');r.className='lb-row';r.style.animationDelay=`${i*.05}s`;
+      const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+      r.innerHTML=`<div class="lb-rank ${rc}">${i+1}</div><span class="lb-av">${p.avatar}</span><div class="lb-info"><div class="lb-name">${p.name}</div><div class="lb-stats">${p.wins}🏆 · ${p.gamesPlayed} parties</div></div><div class="lb-score">${p.totalScore}</div>`;
+      el.appendChild(r)})
+  }).catch(()=>{});
+}
+function closeLB(e){if(!e||e.target===document.getElementById('lb-overlay'))document.getElementById('lb-overlay').classList.remove('open')}
+
+// ACHIEVEMENTS
+const myAchievements=JSON.parse(localStorage.getItem('quiaaime_ach')||'[]');
+function openAchievements(){
+  document.getElementById('ach-overlay').classList.add('open');playSound('success');
+  fetch('/api/achievements').then(r=>r.json()).then(achs=>{
+    const el=document.getElementById('ach-grid');el.innerHTML='';
+    achs.forEach(a=>{const unlocked=myAchievements.includes(a.id);const d=document.createElement('div');d.className=`ach-card ${unlocked?'unlocked':'locked'}`;d.innerHTML=`<div class="ach-icon">${a.icon}</div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div>`;el.appendChild(d)})
+  }).catch(()=>{});
+}
+function closeAch(e){if(!e||e.target===document.getElementById('ach-overlay'))document.getElementById('ach-overlay').classList.remove('open')}
+function unlockAch(id){if(!myAchievements.includes(id)){myAchievements.push(id);localStorage.setItem('quiaaime_ach',JSON.stringify(myAchievements));showToast('🏅 Succès débloqué !')}}
+
+// PWA
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
 
 // AVATAR
 document.querySelectorAll('.av').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.av').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');S.myAvatar=b.dataset.avatar;playSound('tap');navigator.vibrate?.(30)}));
@@ -144,8 +184,8 @@ function spawnR(e){const c=document.getElementById('reactions-container'),el=doc
 function updTimer(ph,sec,max){const pre=ph==='vote'?'v':'g';const tn=document.getElementById(`${pre}-tn`),tc=document.getElementById(`${pre}-tc`);tn.textContent=sec;tc.style.strokeDashoffset=276-(sec/max)*276;if(sec<=3){tn.classList.add('urg');tc.classList.add('urg');playSound('tick')}else{tn.classList.remove('urg');tc.classList.remove('urg')}}
 
 // SOCKET EVENTS
-socket.on('room-created',d=>{S.roomCode=d.code;S.isHost=true;S.players=d.players;document.getElementById('lobby-code').textContent=d.code;renderLobby(d.players,S.myId);initConfig(d.categories,d.modes,{rounds:10,voteTimer:12,guessTimer:15,categories:Object.keys(d.categories),mode:'classic'},true);goToScreen('screen-lobby');playSound('success')});
-socket.on('room-joined',d=>{S.roomCode=d.code;S.isHost=false;S.players=d.players;document.getElementById('lobby-code').textContent=d.code;renderLobby(d.players,d.hostId);initConfig(d.categories,d.modes,d.config,false);goToScreen('screen-lobby');playSound('success')});
+socket.on('room-created',d=>{S.roomCode=d.code;S.isHost=true;S.players=d.players;document.getElementById('lobby-code').textContent=d.code;renderLobby(d.players,S.myId);initConfig(d.categories,d.modes,{rounds:10,voteTimer:12,guessTimer:15,categories:Object.keys(d.categories),mode:'classic'},true);generateQR(d.code);goToScreen('screen-lobby');playSound('success')});
+socket.on('room-joined',d=>{S.roomCode=d.code;S.isHost=false;S.players=d.players;document.getElementById('lobby-code').textContent=d.code;renderLobby(d.players,d.hostId);initConfig(d.categories,d.modes,d.config,false);generateQR(d.code);goToScreen('screen-lobby');playSound('success')});
 socket.on('player-joined',d=>{S.players=d.players;renderLobby(d.players,null);showToast(`${d.player.avatar} ${d.player.name} a rejoint !`)});
 socket.on('player-left',d=>{S.players=d.players;renderLobby(d.players,null);showToast(`${d.playerName} est parti 👋`)});
 socket.on('new-host',d=>{if(d.hostId===S.myId){S.isHost=true;showToast("Tu es le nouvel hôte ! 👑")}renderLobby(S.players,d.hostId)});

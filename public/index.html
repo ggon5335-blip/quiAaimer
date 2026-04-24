@@ -11,6 +11,15 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  <!-- LOADING SCREEN -->
+  <div id="loader">
+    <div class="loader-content">
+      <div class="loader-ring"></div>
+      <h1 class="loader-logo"><span class="l-qui">Qui</span><span class="l-a">A</span><span class="l-aimer">aimé</span></h1>
+      <div class="loader-bar"><div class="loader-fill"></div></div>
+      <p class="loader-txt">Chargement<span class="loader-dots"></span></p>
+    </div>
+  </div>
   <canvas id="particle-canvas"></canvas>
   <canvas id="confetti-canvas"></canvas>
   <div id="reactions-container"></div>
@@ -38,6 +47,10 @@
           <button class="btn btn-glass" onclick="showSetup('join')"><span class="bi">🔗</span>Rejoindre<span class="ba">→</span></button>
         </div>
         <div class="hfoot">Fonctionne sur 📱 et 💻</div>
+        <div class="home-extra">
+          <button class="hex-btn" onclick="openLeaderboard()"><span>🏆</span>Classement</button>
+          <button class="hex-btn" onclick="openAchievements()"><span>🏅</span>Succès</button>
+        </div>
         <button class="dev-btn" onclick="openDev()">👨‍💻 Développeur</button>
       </div>
     </div>
@@ -73,6 +86,25 @@
       </div>
     </div>
 
+    <!-- LEADERBOARD OVERLAY -->
+    <div class="dev-overlay" id="lb-overlay" onclick="closeLB(event)">
+      <div class="dev-modal lb-modal">
+        <button class="dev-close" onclick="closeLB()">✕</button>
+        <h2 class="lb-title">🏆 Classement Global</h2>
+        <p class="lb-sub">Les meilleurs joueurs de tous les temps</p>
+        <div class="lb-list" id="lb-list"><div class="lb-empty">Aucune partie jouée</div></div>
+      </div>
+    </div>
+
+    <!-- ACHIEVEMENTS OVERLAY -->
+    <div class="dev-overlay" id="ach-overlay" onclick="closeAch(event)">
+      <div class="dev-modal ach-modal">
+        <button class="dev-close" onclick="closeAch()">✕</button>
+        <h2 class="lb-title">🏅 Succès</h2>
+        <p class="lb-sub">Débloque-les tous !</p>
+        <div class="ach-grid" id="ach-grid"></div>
+      </div>
+    </div>
     <!-- SETUP -->
     <div class="screen" id="screen-setup">
       <button class="btn-back" onclick="goToScreen('screen-home')">← Retour</button>
@@ -92,6 +124,7 @@
       <div class="lobby-w">
         <h2 class="stitle">🏠 Salle d'attente</h2>
         <div class="pin-box" onclick="copyCode()"><div class="pin-lbl">CODE PIN</div><div class="pin-val" id="lobby-code">----</div><div class="pin-hint">📋 Tap pour copier</div></div>
+        <div class="qr-box" id="qr-box"><div class="qr-title">📲 Scanner pour rejoindre</div><img id="qr-img" class="qr-img" alt="QR"><div class="qr-url" id="qr-url"></div></div>
 
         <!-- CONFIG HOST -->
         <div class="cfg-panel" id="cfg-panel">
