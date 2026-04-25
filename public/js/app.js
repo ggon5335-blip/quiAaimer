@@ -82,8 +82,15 @@ function openAchievements(){
 function closeAch(e){if(!e||e.target===document.getElementById('ach-overlay'))document.getElementById('ach-overlay').classList.remove('open')}
 function unlockAch(id){if(!myAchievements.includes(id)){myAchievements.push(id);localStorage.setItem('quiaaime_ach',JSON.stringify(myAchievements));showToast('🏅 Succès débloqué !')}}
 
-// PWA
+// PWA INSTALL
+let deferredPrompt=null;
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install-btn').style.display='block'});
+function installApp(){
+  if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(r=>{if(r.outcome==='accepted')showToast('🎉 Appli installée !');document.getElementById('install-btn').style.display='none';deferredPrompt=null})}
+  else{showToast('📱 Ouvre le menu du navigateur → "Ajouter à l\'écran d\'accueil"')}
+}
+window.addEventListener('appinstalled',()=>{document.getElementById('install-btn').style.display='none';showToast('✅ QuiAaimé installé !')});
 
 // AVATAR
 document.querySelectorAll('.av').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.av').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');S.myAvatar=b.dataset.avatar;playSound('tap');navigator.vibrate?.(30)}));

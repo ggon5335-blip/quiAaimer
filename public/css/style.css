@@ -299,4 +299,30 @@ body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-tap-highli
 .ach-card.unlocked::before{content:'✓';position:absolute;top:6px;right:8px;font-size:.55rem;color:var(--ok);font-weight:900}
 .ach-icon{font-size:2rem;margin-bottom:4px}.ach-name{font-size:.7rem;font-weight:800;margin-bottom:2px}.ach-desc{font-size:.55rem;color:rgba(255,255,255,.3)}
 
-@media(max-width:400px){.logo{font-size:2.4rem}.avg{grid-template-columns:repeat(8,1fr)}.qemoji{font-size:3.2rem}.mode-grid{grid-template-columns:1fr}.pod-bar{width:62px}.dev-modal{padding:24px 20px}.ach-grid{grid-template-columns:1fr}}
+/* INSTALL BUTTON */
+.install-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--p),var(--pk));border:none;border-radius:12px;color:#fff;font:700 .85rem var(--f);cursor:pointer;transition:all .25s;box-shadow:0 4px 20px rgba(124,58,237,.25);position:relative;overflow:hidden}
+.install-btn::before{content:'';position:absolute;top:0;left:-100%;width:200%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);animation:installShine 3s ease-in-out infinite}
+@keyframes installShine{0%{left:-100%}50%{left:100%}100%{left:100%}}
+.install-btn:hover{transform:translateY(-2px);box-shadow:0 6px 25px rgba(124,58,237,.35)}
+.install-btn:active{transform:scale(.97)}
+
+/* MOBILE FIXES */
+@media(max-width:500px){
+  .screen{padding:10px;overflow-y:auto;align-items:flex-start;padding-top:30px}
+  .hc{gap:10px;padding:0 4px;max-height:100%;overflow-y:auto;padding-bottom:20px}
+  .logo{font-size:2.2rem}
+  .hsub{font-size:.7rem;margin-bottom:6px}
+  .btn{padding:12px 20px;font-size:.85rem}
+  .btn-group{gap:6px}
+  .hfoot{font-size:.6rem;margin-top:4px}
+  .home-extra{gap:6px}
+  .hex-btn{padding:8px;font-size:.7rem}
+  .dev-btn{font-size:.6rem;padding:8px 14px}
+  .install-btn{padding:10px;font-size:.8rem}
+  .lobby-w{max-height:100%;overflow-y:auto;padding-bottom:20px}
+  .cfg-panel{max-height:50vh;overflow-y:auto}
+  .qr-box{padding:8px}
+  .qr-img{width:110px;height:110px}
+  .dev-modal{max-height:85vh;overflow-y:auto;padding:20px 16px}
+}
+@media(max-width:400px){.logo{font-size:2rem}.avg{grid-template-columns:repeat(8,1fr)}.qemoji{font-size:3.2rem}.mode-grid{grid-template-columns:1fr}.pod-bar{width:62px}.ach-grid{grid-template-columns:1fr}}
