@@ -92,6 +92,70 @@ function installApp(){
 }
 window.addEventListener('appinstalled',()=>{document.getElementById('install-btn').style.display='none';showToast('✅ QuiAaimé installé !')});
 
+// SOUNDS
+let soundEnabled=true;
+function toggleSound(){soundEnabled=!soundEnabled;document.getElementById('sound-toggle').textContent=soundEnabled?'🔊':'🔇';showToast(soundEnabled?'Son activé':'Son désactivé');playSound('tap')}
+
+// PROFILE
+function loadProfile(){
+  const stats=JSON.parse(localStorage.getItem('quiaaime_stats')||'{"games":0,"wins":0,"score":0}');
+  document.getElementById('ps-games').textContent=stats.games;
+  document.getElementById('ps-wins').textContent=stats.wins;
+  document.getElementById('ps-score').textContent=stats.score;
+  const lastAv=localStorage.getItem('quiaaime_avatar')||'😎';
+  const lastName=localStorage.getItem('quiaaime_name')||'Joueur';
+  document.getElementById('prof-av').textContent=lastAv;
+  document.getElementById('prof-name').textContent=lastName;
+}
+function openProfile(){loadProfile();document.getElementById('profile-overlay').classList.add('open');playSound('whoosh')}
+function closeProfile(e){if(!e||e.target===document.getElementById('profile-overlay'))document.getElementById('profile-overlay').classList.remove('open')}
+function resetProfile(){if(confirm('Tout effacer ?')){localStorage.removeItem('quiaaime_stats');localStorage.removeItem('quiaaime_ach');myAchievements=[];loadProfile();showToast('Profil réinitialisé')}}
+function saveStats(score,won){
+  const stats=JSON.parse(localStorage.getItem('quiaaime_stats')||'{"games":0,"wins":0,"score":0}');
+  stats.games++;if(won)stats.wins++;stats.score+=score;
+  localStorage.setItem('quiaaime_stats',JSON.stringify(stats));
+  if(S.myName)localStorage.setItem('quiaaime_name',S.myName);
+  if(S.myAvatar)localStorage.setItem('quiaaime_avatar',S.myAvatar);
+}
+
+// PUBLIC ROOMS
+function openPublicRooms(){
+  document.getElementById('pub-overlay').classList.add('open');
+  playSound('whoosh');
+  document.getElementById('pub-list').innerHTML='<div class="lb-empty">Recherche...</div>';
+  fetch('/api/public-rooms').then(r=>r.json()).then(rooms=>{
+    const el=document.getElementById('pub-list');el.innerHTML='';
+    if(rooms.length===0){el.innerHTML='<div class="lb-empty">Aucune partie publique en ce moment 😕</div>';return}
+    rooms.forEach(r=>{
+      const d=document.createElement('div');d.className='pub-item';
+      d.innerHTML=`<div class="pub-host">Partie de ${r.host}</div><div class="pub-count">👥 ${r.players}/10</div><button class="pub-join" onclick="joinPublic('${r.code}')">Rejoindre</button>`;
+      el.appendChild(d);
+    });
+  }).catch(()=>{document.getElementById('pub-list').innerHTML='<div class="lb-empty" style="color:var(--no)">Erreur de connexion</div>'});
+}
+function closePub(e){if(!e||e.target===document.getElementById('pub-overlay'))document.getElementById('pub-overlay').classList.remove('open')}
+function createPublic(){closePub();showSetup('create');S.isPublic=true;}
+function joinPublic(code){closePub();showSetup('join');document.getElementById('input-code').value=code;}
+
+// CHAT
+let unreadChat=0;
+function toggleChat(){
+  const p=document.getElementById('chat-panel');
+  if(p.classList.contains('open')){p.classList.remove('open')}
+  else{p.classList.add('open');unreadChat=0;updateChatBadge();setTimeout(()=>document.getElementById('chat-input').focus(),100)}
+}
+function updateChatBadge(){const b=document.getElementById('chat-badge');if(unreadChat>0&&!document.getElementById('chat-panel').classList.contains('open')){b.style.display='flex';b.textContent=unreadChat>9?'9+':unreadChat}else{b.style.display='none'}}
+function sendChat(){
+  const inp=document.getElementById('chat-input');const text=inp.value.trim();if(!text||!S.roomCode)return;
+  socket.emit('chat-msg',{text});inp.value='';
+}
+socket.on('chat-msg',m=>{
+  const msgs=document.getElementById('chat-messages');
+  const d=document.createElement('div');d.className='chat-msg'+(m.id===S.myId?' mine':'');
+  d.innerHTML=`<div class="chat-msg-name">${m.name} ${m.avatar}</div><div class="chat-msg-text">${m.text.replace(/</g,'&lt;')}</div>`;
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+  if(m.id!==S.myId&&!document.getElementById('chat-panel').classList.contains('open')){unreadChat++;updateChatBadge();playSound('bubble')}
+});
 // AVATAR
 document.querySelectorAll('.av').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.av').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');S.myAvatar=b.dataset.avatar;playSound('tap');navigator.vibrate?.(30)}));
 
@@ -210,6 +274,7 @@ function renderGO(rk){
   [['pod-1',0],['pod-2',1],['pod-3',2]].forEach(([id,i])=>{const e=document.getElementById(id);if(rk[i]){e.querySelector('.pod-av').textContent=rk[i].avatar;e.querySelector('.pod-nm').textContent=rk[i].name;e.querySelector('.pod-sc').textContent=rk[i].score+' pts';e.style.display='flex'}else e.style.display='none'});
   const f=document.getElementById('ranks');f.innerHTML='';rk.forEach((p,i)=>{if(i<3)return;const r=document.createElement('div');r.className='rk';r.style.animationDelay=`${(i-3)*.08+.6}s`;r.innerHTML=`<span class="rk-p">#${i+1}</span><span class="rk-a">${p.avatar}</span><span class="rk-n">${esc(p.name)}${p.eliminated?' ❌':''}</span><span class="rk-s">${p.score} pts</span>`;f.appendChild(r)});
   document.getElementById('btn-replay').style.display=S.isHost?'flex':'none';launchConfetti();playSound('victory');
+  const me=rk.find(p=>p.id===S.myId);if(me)saveStats(me.score,rk[0]&&rk[0].id===S.myId);
 }
 function playAgain(){socket.emit('play-again')}
 function goHome(){location.reload()}
@@ -270,7 +335,7 @@ function showToast(m,err){const c=document.getElementById('toast-container'),t=d
 // SOUNDS
 const ax=new(window.AudioContext||window.webkitAudioContext)();
 function tone(f,d,tp='sine',v=.1){try{const o=ax.createOscillator(),g=ax.createGain();o.type=tp;o.frequency.value=f;g.gain.setValueAtTime(v,ax.currentTime);g.gain.exponentialRampToValueAtTime(.001,ax.currentTime+d);o.connect(g).connect(ax.destination);o.start();o.stop(ax.currentTime+d)}catch(e){}}
-function playSound(n){try{switch(n){case'tap':tone(800,.06);break;case'whoosh':tone(300,.1,'sine',.06);break;case'success':tone(523,.1);setTimeout(()=>tone(659,.1),80);setTimeout(()=>tone(784,.12),160);break;case'like':tone(700,.06);setTimeout(()=>tone(900,.1),60);break;case'nope':tone(300,.15,'triangle');break;case'confirm':tone(500,.06);setTimeout(()=>tone(700,.1),80);break;case'newRound':tone(440,.06);setTimeout(()=>tone(550,.06),80);setTimeout(()=>tone(660,.1),160);break;case'guessPhase':tone(660,.1);setTimeout(()=>tone(550,.06),120);break;case'tick':tone(1000,.03,'square',.05);break;case'reveal':tone(400,.06);setTimeout(()=>tone(600,.06),80);setTimeout(()=>tone(800,.12),160);break;case'victory':tone(523,.1);setTimeout(()=>tone(659,.1),120);setTimeout(()=>tone(784,.1),240);setTimeout(()=>tone(1047,.2),360);break;case'drumroll':for(let i=0;i<8;i++)setTimeout(()=>tone(200+i*20,.08,'triangle',.06),i*120);break}}catch(e){}}
+function playSound(n){if(!soundEnabled)return;try{switch(n){case'tap':tone(800,.06);break;case'whoosh':tone(300,.1,'sine',.06);break;case'success':tone(523,.1);setTimeout(()=>tone(659,.1),80);setTimeout(()=>tone(784,.12),160);break;case'like':tone(700,.06);setTimeout(()=>tone(900,.1),60);break;case'nope':tone(300,.15,'triangle');break;case'confirm':tone(500,.06);setTimeout(()=>tone(700,.1),80);break;case'newRound':tone(440,.06);setTimeout(()=>tone(550,.06),80);setTimeout(()=>tone(660,.1),160);break;case'guessPhase':tone(660,.1);setTimeout(()=>tone(550,.06),120);break;case'tick':tone(1000,.03,'square',.05);break;case'reveal':tone(400,.06);setTimeout(()=>tone(600,.06),80);setTimeout(()=>tone(800,.12),160);break;case'victory':tone(523,.1);setTimeout(()=>tone(659,.1),120);setTimeout(()=>tone(784,.1),240);setTimeout(()=>tone(1047,.2),360);break;case'drumroll':for(let i=0;i<8;i++)setTimeout(()=>tone(200+i*20,.08,'triangle',.06),i*120);break;case'bubble':tone(400,.08,'sine');setTimeout(()=>tone(600,.08,'sine'),80);break}}catch(e){}}
 document.addEventListener('click',()=>{if(ax.state==='suspended')ax.resume()},{once:true});
 document.addEventListener('touchstart',()=>{if(ax.state==='suspended')ax.resume()},{once:true});
 

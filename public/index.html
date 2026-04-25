@@ -23,6 +23,7 @@
   <canvas id="particle-canvas"></canvas>
   <canvas id="confetti-canvas"></canvas>
   <div id="reactions-container"></div>
+  <button id="sound-toggle" class="sound-btn" onclick="toggleSound()">🔊</button>
   <div id="toast-container"></div>
   <div id="app">
 
@@ -46,10 +47,12 @@
           <button class="btn btn-glow" onclick="showSetup('create')"><span class="btn-shine"></span><span class="bi">🎉</span>Créer une Partie<span class="ba">→</span></button>
           <button class="btn btn-glass" onclick="showSetup('join')"><span class="bi">🔗</span>Rejoindre<span class="ba">→</span></button>
         </div>
+        <button class="btn btn-public" onclick="openPublicRooms()">🏠 Parties Publiques</button>
         <div class="hfoot">Fonctionne sur 📱 et 💻</div>
         <div class="home-extra">
           <button class="hex-btn" onclick="openLeaderboard()"><span>🏆</span>Classement</button>
           <button class="hex-btn" onclick="openAchievements()"><span>🏅</span>Succès</button>
+          <button class="hex-btn" onclick="openProfile()"><span>👤</span>Profil</button>
         </div>
         <button class="install-btn" id="install-btn" style="display:none" onclick="installApp()">📲 Installer l'appli</button>
         <button class="dev-btn" onclick="openDev()">👨‍💻 Développeur</button>
@@ -106,6 +109,42 @@
         <div class="ach-grid" id="ach-grid"></div>
       </div>
     </div>
+
+    <!-- PROFILE OVERLAY -->
+    <div class="dev-overlay" id="profile-overlay" onclick="closeProfile(event)">
+      <div class="dev-modal profile-modal">
+        <button class="dev-close" onclick="closeProfile()">✕</button>
+        <div class="prof-av" id="prof-av">😎</div>
+        <h2 class="lb-title" id="prof-name">Joueur</h2>
+        <div class="prof-stats">
+          <div class="prof-s"><span class="ps-val" id="ps-games">0</span><span class="ps-lbl">Parties</span></div>
+          <div class="prof-s"><span class="ps-val" id="ps-wins">0</span><span class="ps-lbl">Victoires</span></div>
+          <div class="prof-s"><span class="ps-val" id="ps-score">0</span><span class="ps-lbl">Score</span></div>
+        </div>
+        <button class="btn btn-glass btn-full" onclick="resetProfile()" style="margin-top:12px;font-size:.75rem">🗑️ Réinitialiser</button>
+      </div>
+    </div>
+
+    <!-- PUBLIC ROOMS OVERLAY -->
+    <div class="dev-overlay" id="pub-overlay" onclick="closePub(event)">
+      <div class="dev-modal lb-modal">
+        <button class="dev-close" onclick="closePub()">✕</button>
+        <h2 class="lb-title">🏠 Parties Publiques</h2>
+        <p class="lb-sub">Rejoins une partie ouverte</p>
+        <div class="lb-list" id="pub-list"><div class="lb-empty">Aucune partie publique</div></div>
+        <button class="btn btn-glow btn-full" onclick="createPublic()" style="margin-top:12px;font-size:.8rem"><span class="btn-shine"></span>➕ Créer une partie publique</button>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat-widget" id="chat-widget" style="display:none">
+      <button class="chat-toggle" id="chat-toggle" onclick="toggleChat()">💬<span class="chat-badge" id="chat-badge" style="display:none">0</span></button>
+      <div class="chat-panel" id="chat-panel">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-w"><input id="chat-input" placeholder="Message..." maxlength="100" autocomplete="off" onkeydown="if(event.key==='Enter')sendChat()"><button class="chat-send" onclick="sendChat()">➤</button></div>
+      </div>
+    </div>
+
     <!-- SETUP -->
     <div class="screen" id="screen-setup">
       <button class="btn-back" onclick="goToScreen('screen-home')">← Retour</button>

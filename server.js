@@ -100,6 +100,13 @@ const ACHIEVEMENTS=[
 ];
 app.get('/api/achievements',(req,res)=>res.json(ACHIEVEMENTS));
 
+// PUBLIC ROOMS
+app.get('/api/public-rooms',(req,res)=>{
+  const pub=[];
+  rooms.forEach(r=>{if(r.isPublic&&r.state==='lobby'&&r.players.size<10)pub.push({code:r.code,players:r.players.size,host:allPlayers(r).find(p=>p.isHost)?.name||'?'})});
+  res.json(pub);
+});
+
 app.get('/health',(req,res)=>res.json({status:'ok',rooms:rooms?.size||0}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname,'public')));
@@ -281,8 +288,8 @@ io.on('connection',socket=>{
 
   onlineUsers.set(socket.id,{id:socket.id,ip,fp,device:dev,connectedAt:new Date().toISOString()});
 
-  socket.on('create-room',({playerName,avatar})=>{
-    const code=genCode(),room={code,hostId:socket.id,players:new Map(),state:'lobby',round:0,used:new Set(),currentContent:null,votes:new Map(),guesses:new Map(),timer:null,phase:'lobby',bombId:null,config:{rounds:10,voteTimer:12,guessTimer:15,categories:Object.keys(CATS),mode:'classic'}};
+  socket.on('create-room',({playerName,avatar,isPublic})=>{
+    const code=genCode(),room={code,hostId:socket.id,players:new Map(),state:'lobby',round:0,used:new Set(),currentContent:null,votes:new Map(),guesses:new Map(),timer:null,phase:'lobby',bombId:null,isPublic:!!isPublic,config:{rounds:10,voteTimer:12,guessTimer:15,categories:Object.keys(CATS),mode:'classic'}};
     const player={id:socket.id,name:playerName,avatar,score:0,isHost:true,eliminated:false};
     room.players.set(socket.id,player);rooms.set(code,room);playerRooms.set(socket.id,code);socket.join(code);
     socket.emit('room-created',{code,player,players:[player],categories:CATS,modes:MODES});
@@ -318,6 +325,13 @@ io.on('connection',socket=>{
   socket.on('submit-vote',({liked})=>{const code=playerRooms.get(socket.id),room=rooms.get(code);if(!room||room.phase!=='voting')return;room.votes.set(socket.id,liked);io.to(code).emit('player-voted',{votedCount:room.votes.size,total:arr(room).length});checkVotes(room)});
   socket.on('submit-guess',({guessedIds})=>{const code=playerRooms.get(socket.id),room=rooms.get(code);if(!room||room.phase!=='guessing')return;room.guesses.set(socket.id,guessedIds||[]);io.to(code).emit('player-guessed',{guessedCount:room.guesses.size,total:arr(room).length});checkGuesses(room)});
   socket.on('send-reaction',({emoji})=>{const code=playerRooms.get(socket.id);if(code)socket.to(code).emit('reaction',{emoji})});
+  // CHAT
+  socket.on('chat-msg',({text})=>{
+    const code=playerRooms.get(socket.id),room=rooms.get(code);if(!room||!text)return;
+    const p=room.players.get(socket.id);if(!p)return;
+    const msg=text.trim().slice(0,100);if(!msg)return;
+    io.to(code).emit('chat-msg',{name:p.name,avatar:p.avatar,text:msg,id:socket.id});
+  });
   socket.on('play-again',()=>{const code=playerRooms.get(socket.id),room=rooms.get(code);if(!room||room.hostId!==socket.id)return;room.state='lobby';room.round=0;room.used.clear();room.votes.clear();room.guesses.clear();allPlayers(room).forEach(p=>{p.score=0;p.eliminated=false});io.to(code).emit('back-to-lobby',{players:allPlayers(room),config:room.config})});
   socket.on('disconnect',()=>{
     onlineUsers.delete(socket.id);
